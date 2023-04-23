@@ -41,11 +41,20 @@ final class Plugin {
 public func SDCreate(resourcePath: OpaquePointer, units: CInt) -> OpaquePointer! {
     let resourcePath = String(cString: UnsafePointer<CChar>(resourcePath))
     let units = MLComputeUnits(rawValue: Int(units))!
+    //创建plugin对象
     if let plugin = try? Plugin(resourcePath: resourcePath, computeUnits: units) {
+        //调用passRetained手动延长plugin对象引用计数，并返回透明指针
         return OpaquePointer(Unmanaged.passRetained(plugin).toOpaque())
     }
     return nil;
 }
+
+@_cdecl("SDDestroy")
+public func SDDestroy(_ plugin: OpaquePointer) {
+    //调用takeRetainedValue手动降低plugin对象引用技术，试图释放对象。与SDCreate中的调用相反
+    _ = Unmanaged<Plugin>.fromOpaque(UnsafeRawPointer(plugin)).takeRetainedValue()
+}
+
 
 @_cdecl("SDSetConfig")
 public func SDSetConfig(
@@ -55,6 +64,7 @@ public func SDSetConfig(
     seed: CInt,
     guidanceScale: CFloat
 ) {
+    //在过程中使用plugin对象时，使用takeUnretainedValue来获取指针值，无需对对象引用计数进行修改
     let plugin = Unmanaged<Plugin>.fromOpaque(UnsafeRawPointer(plugin)).takeUnretainedValue()
     plugin.config.prompt = String(cString: UnsafePointer<CChar>(prompt))
     plugin.config.stepCount = Int(stepCount)
@@ -64,6 +74,7 @@ public func SDSetConfig(
 
 @_cdecl("SDGenerate")
 public func SDGenerate(_ plugin: OpaquePointer) {
+    //在过程中使用plugin对象时，使用takeUnretainedValue来获取指针值，无需对对象引用计数进行修改
     let plugin = Unmanaged<Plugin>.fromOpaque(UnsafeRawPointer(plugin)).takeUnretainedValue()
     try? plugin.runGenerator()
 }
@@ -74,6 +85,7 @@ public func SDGenerateFromImage(
     image: OpaquePointer,
     strength: CFloat
 ) {
+    //在过程中使用plugin对象时，使用takeUnretainedValue来获取指针值，无需对对象引用计数进行修改
     let plugin = Unmanaged<Plugin>.fromOpaque(UnsafeRawPointer(plugin)).takeUnretainedValue()
     let pointer = UnsafeMutableRawPointer(image)
 
@@ -98,11 +110,8 @@ public func SDGenerateFromImage(
 
 @_cdecl("SDGetImage")
 public func SDGetImage(_ plugin: OpaquePointer) -> OpaquePointer! {
+    //在过程中使用plugin对象时，使用takeUnretainedValue来获取指针值，无需对对象引用计数进行修改
     let plugin = Unmanaged<Plugin>.fromOpaque(UnsafeRawPointer(plugin)).takeUnretainedValue()
     return OpaquePointer(CFDataGetBytePtr(plugin.generated!.dataProvider!.data))
 }
 
-@_cdecl("SDDestroy")
-public func SDDestroy(_ plugin: OpaquePointer) {
-    _ = Unmanaged<Plugin>.fromOpaque(UnsafeRawPointer(plugin)).takeRetainedValue()
-}

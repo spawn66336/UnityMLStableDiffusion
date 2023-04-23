@@ -71,6 +71,7 @@ public sealed class Pipeline : System.IDisposable
         _plugin = null;
     }
 
+    //Awaitable Unity2023的新特性
     public async Awaitable InitializeAsync
       (string resourcePath, ComputeUnits units = ComputeUnits.All)
     {
